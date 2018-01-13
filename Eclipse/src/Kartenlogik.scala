@@ -13,7 +13,15 @@ case class Kartenlogik() {
     while (check1 == false) {
       println("Waehlen Sie eine Figur!")
       var figStr = scala.io.StdIn.readLine()
-      fig = figStr.toInt
+      var s = StrToIntK(figStr)
+
+      while (s == None) {
+        println("Waehlen Sie eine Figur!")
+        figStr = scala.io.StdIn.readLine()
+        s = StrToIntK(figStr)
+
+      }
+      fig = s.get
       if (fig >= 1 && fig <= 4) {
         check1 = true;
       }
@@ -25,14 +33,28 @@ case class Kartenlogik() {
     return fig
   }
 
-  def opt_waehlen(anz: Int): Int = {
-    var opt = 0
+  def spFigur_waehlen(): String = {
+
+    return scala.io.StdIn.readLine()
+  }
+
+  def opt_waehlen(): Int = {
+    var opt = -1
     var check2 = false
     while (check2 == false) {
       println("Waehlen Sie eine Option aus!")
       var optStr = scala.io.StdIn.readLine()
-      opt = optStr.toInt
-      if (opt >= 1 && opt <= anz) {
+      var s = StrToIntK(optStr)
+
+      while (s == None) {
+        println("Waehlen Sie eine Option aus!")
+        optStr = scala.io.StdIn.readLine()
+        s = StrToIntK(optStr)
+
+      }
+      opt = s.get
+
+      if (opt >= 0 && opt <= 15) {
         check2 = true;
       }
       if (!check2) {
@@ -43,44 +65,168 @@ case class Kartenlogik() {
     return opt
   }
 
-  def laufen(lF: collection.mutable.Map[String, Int], figur: String, opt: Int, spieler: Spieler,alleSp:ArrayBuffer[Spieler]) {
+  def laufen(lF: collection.mutable.Map[String, Int], figur: String, opt: Int, spieler: Spieler, alleSp: ArrayBuffer[Spieler]) {
 
     opt match {
       case 0 => {
-        if (!spieler.delFigur(figur)){
+        if (!spieler.delFigur(figur)) {
           println("etwas lief falsch.")
-          //todo fehlerbehandlung
+          //TODO fehlerbehandlung
         }
-        if(posBelegt(lF, spieler.getStartPos())){
+        if (posBelegt(lF, spieler.getStartPos())) {
           //nachhause schicken
           schickStart(lF, alleSp, spieler.getStartPos())
         }
-        
+
         //aus dem start gehen
         lF += ((figur, spieler.getStartPos()))
-        
+
       }
-    }
-    
-    // im normalfall : 1-13
-        if(lF.contains(figur)){
+      case 7 => {
+        // 7
+        if (lF.contains(figur)) {
+          var pos = lF.get(figur)
+          var erg = (pos.get + opt) % 64 
+          
+          
+          // TODO was wenn blockiert
+          
+         
+          
+          
+          lF.remove(figur)
+          
+          if (pos.get == spieler.startPos){
+            // Ins Ziel laufen
+            val zielPos = erg - spieler.startPos
+            spieler.ziel += ((figur, zielPos))
+          } else {
+            // noch eine runde laufen
+            if (posBelegt(lF, erg))
+              //figur schlagen
+              schickStart(lF, alleSp, erg)
+            lF += ((figur, erg))
+          }
+        } else {
+          // Figur nicht im Lauffeld -> Figur ist im Zielfeld
+          if (spieler.ziel.contains(figur)) {
+            var pos = spieler.ziel.get(figur)
+            var schritt = 4 - pos.get
+            var l = spieler.ziel.map(_.swap)
+
+            if (opt <= schritt) {
+              var belegt = false
+              for (i <- pos.get + 1 to 4) {
+                if (l.contains(i)) {
+                  belegt = true
+                }
+
+                if (!belegt) {
+                  spieler.ziel.remove(figur)
+                  spieler.ziel += ((figur, pos.get + schritt))
+                } else {
+                  println("Figur kann sich nicht mehr laufen!")
+                }
+              }
+            }
+          }
+        }
+      }
+      case 14 => {
+        // 4 zurueck
+        if (lF.contains(figur)) {
           var pos = lF.get(figur)
           lF.remove(figur)
-          var erg = pos.get + opt
+          var erg = (pos.get - 4) 
+       
+          if (erg < 0){
+            erg = 64+erg
+          }
+          
+          erg = erg % 64
+          println("TEST." + erg)
+
+          if (posBelegt(lF, erg))
+            //figur schlagen
+            schickStart(lF, alleSp, erg)
           lF += ((figur, erg))
-        }else{
-           lF += ((figur, 0))
         }
-      
+      }
+      case 15 => {
+        println("Figur von andere Spieler waehlen! (z.B. R1");
+        var fig2 = spFigur_waehlen()
 
-    //lF.insert(0, (figur, 2))
-    //lF.insert(0, (figur, 4))
-    //lF.remove(0)
+        // Check falls tauschbar
+        while (!lF.contains(fig2) && !fig2.startsWith(spieler.getName())) {
+          println("Diese Figur kann man nicht tauschen.")
+          println("Figur von anderem Spieler waehlen! (z.B. R1");
+          fig2 = spFigur_waehlen()
+        }
 
+        var pos = lF.get(figur).get
+        lF.remove(figur)
+
+        var pos2 = lF.get(fig2).get
+        lF.remove(fig2)
+
+        lF += ((figur, pos2))
+        lF += ((fig2, pos))
+
+      }
+      case _ => {
+        // TODO was wenn blockiert
+        // im normalfall : 1-13
+        if (lF.contains(figur)) {
+          var pos = lF.get(figur)
+          var erg = (pos.get + opt) % 64 
+          
+          //was wenn blockiert
+          
+          
+          
+         
+          lF.remove(figur)
+          
+          if ((pos.get < spieler.startPos || (spieler.getId() == 1 && pos.get > 4)) && 1 <= (erg - spieler.startPos) % 64 && (erg - spieler.startPos) % 64 <= 4) {
+            // Ins Ziel laufen
+            val zielPos = erg - spieler.startPos
+            spieler.ziel += ((figur, zielPos))
+          } else {
+            // noch eine runde laufen
+            if (posBelegt(lF, erg))
+              //figur schlagen
+              schickStart(lF, alleSp, erg)
+            lF += ((figur, erg))
+          }
+        } else {
+          // Figur nicht im Lauffeld -> Figur ist im Zielfeld
+          if (spieler.ziel.contains(figur)) {
+            var pos = spieler.ziel.get(figur)
+            var schritt = 4 - pos.get
+            var l = spieler.ziel.map(_.swap)
+
+            if (opt <= schritt) {
+              var belegt = false
+              for (i <- pos.get + 1 to 4) {
+                if (l.contains(i)) {
+                  belegt = true
+                }
+
+                if (!belegt) {
+                  spieler.ziel.remove(figur)
+                  spieler.ziel += ((figur, pos.get + schritt))
+                } else {
+                  println("Figur kann sich nicht mehr laufen!")
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   }
 
-  def ausfuehren(lF: collection.mutable.Map[String, Int], karte: Int, spieler: Spieler,alleSp:ArrayBuffer[Spieler]) {
-    // Lauffeld uebersichtlich ausgeben
+  def ausfuehren(lF: collection.mutable.Map[String, Int], karte: Int, spieler: Spieler, alleSp: ArrayBuffer[Spieler]) {
 
     //Fall:joker
     var karteE = karte
@@ -90,7 +236,15 @@ case class Kartenlogik() {
       while (check2 == false) {
         println("Waehlen Sie eine Karte aus die der Joker sein soll.")
         var optStr = scala.io.StdIn.readLine()
-        kart = optStr.toInt
+        var s = StrToIntK(optStr)
+
+        while (s == None) {
+          println("Waehlen Sie eine Karte aus die der Joker sein soll.")
+          optStr = scala.io.StdIn.readLine()
+          s = StrToIntK(optStr)
+
+        }
+        kart = s.get
         if (kart >= 1 && kart <= 13) {
           check2 = true;
         }
@@ -103,129 +257,155 @@ case class Kartenlogik() {
     }
 
     karteE match {
+      case 0 => { // keine moegliche karte
+
+        println("Es gibt keine ausspielbare Karte.")
+      }
       case 1 => { // ASS
         var fig = spieler.getName() + figur_waehlen()
         // optionen bestimmen
         println("0 -> Aus Startfeld rausgehen.")
         println("1 -> 1 Schritt im Lauffeld weiter laufen.")
         println("11 -> 11 Schritte im Lauffeld weiter laufen.")
-        var opt = opt_waehlen(3)
-        //todo
-        laufen(lF, fig, opt, spieler,alleSp)
+        var opt = opt_waehlen()
+
+        laufen(lF, fig, opt, spieler, alleSp)
       }
       case 2 => {
-        var fig = figur_waehlen()
+        var fig = spieler.getName() + figur_waehlen()
         // optionen bestimmen
         var opt = 2
-        //todo
+        laufen(lF, fig, opt, spieler, alleSp)
       }
       case 3 => {
-        var fig = figur_waehlen()
+        var fig = spieler.getName() + figur_waehlen()
         // optionen bestimmen
         var opt = 3
-        //todo
+        laufen(lF, fig, opt, spieler, alleSp)
       }
       case 4 => {
-        var fig = figur_waehlen()
+        var fig = spieler.getName() + figur_waehlen()
         // optionen bestimmen
         println("14 -> 4 Schritte im Lauffeld Rueckwaerts laufen.")
         println("4 -> 4 Schritte im Lauffeld weiter laufen.")
-        var opt = opt_waehlen(2)
-        //todo
+        var opt = opt_waehlen()
+
+        laufen(lF, fig, opt, spieler, alleSp)
       }
       case 5 => {
-        var fig = figur_waehlen()
+        var fig = spieler.getName() + figur_waehlen()
         // optionen bestimmen
         var opt = 5
-        //todo
+
+        laufen(lF, fig, opt, spieler, alleSp)
       }
       case 6 => {
-        var fig = figur_waehlen()
+        var fig = spieler.getName() + figur_waehlen()
         // optionen bestimmen
         var opt = 6
-        //todo
+
+        laufen(lF, fig, opt, spieler, alleSp)
       }
       case 7 => {
-        var fig = figur_waehlen()
-        // optionen bestimmen
         for (i <- 1 to 7) {
-          var opt = 1
-          //todo
+          var fig = spieler.getName() + figur_waehlen()
+          // optionen bestimmen
+          // TODO zuege verfallen falls fehler
+          
+          var opt = 7
+
+          laufen(lF, fig, opt, spieler, alleSp)
         }
       }
       case 8 => {
-        var fig = figur_waehlen()
+        var fig = spieler.getName() + figur_waehlen()
         // optionen bestimmen
         var opt = 8
-        //todo
+
+        laufen(lF, fig, opt, spieler, alleSp)
       }
       case 9 => {
-        var fig = figur_waehlen()
+        var fig = spieler.getName() + figur_waehlen()
         // optionen bestimmen
         var opt = 9
-        //todo
+
+        laufen(lF, fig, opt, spieler, alleSp)
       }
       case 10 => {
-        var fig = figur_waehlen()
+        var fig = spieler.getName() + figur_waehlen()
         // optionen bestimmen
         var opt = 10
-        //todo
+
+        laufen(lF, fig, opt, spieler, alleSp)
       }
       case 11 => { // Bube
-        var fig = figur_waehlen()
+        var fig = spieler.getName() + figur_waehlen()
         // optionen bestimmen
-        println("Figur von andere Spieler waehlen!");
-        var fig2 = figur_waehlen()
+
         var opt = 15
-        //todo
+
+        laufen(lF, fig, opt, spieler, alleSp)
       }
       case 12 => { // Dame
-        var fig = figur_waehlen()
+        var fig = spieler.getName() + figur_waehlen()
         var opt = 12
-        //todo
+
+        laufen(lF, fig, opt, spieler, alleSp)
 
       }
       case 13 => { // Koenig
-        var fig = figur_waehlen()
+        var fig = spieler.getName() + figur_waehlen()
         // optionen bestimmen
         println("0 -> Aus Startfeld rausgehen.")
         println("13 -> 13 Schritte im Lauffeld weiter laufen.")
-        var opt = opt_waehlen(2)
-        //todo
+        var opt = opt_waehlen()
 
+        laufen(lF, fig, opt, spieler, alleSp)
+
+      }
+      case _ => { // etwas lief schief
+        println("Etwas lief falsch: Error match-ausfuehren")
+        System.exit(1)
       }
     }
   }
-  
-  def posBelegt(lF: collection.mutable.Map[String, Int], pos: Int): Boolean ={
+
+  def posBelegt(lF: collection.mutable.Map[String, Int], pos: Int): Boolean = {
     var check = false
-    for ((k,v) <- lF){
-      if(v == pos){
+    for ((k, v) <- lF) {
+      if (v == pos) {
         check = true
-      } 
+      }
     }
     return check
   }
-  
+
   def schickStart(lF: collection.mutable.Map[String, Int], alleSp: ArrayBuffer[Spieler], pos: Int) = {
     // get figur
     var fig = "0"
-    for ((k,v) <- lF){
-      if(v == pos){
+    for ((k, v) <- lF) {
+      if (v == pos) {
         fig = k
       }
     }
     //todo fehlerbehandlung
     // loesche im lF
     lF -= ((fig))
-    
+
     // setze in zielSpieler.start
-    for(sp <- alleSp){
-      if(fig.startsWith(sp.getName())){
+    for (sp <- alleSp) {
+      if (fig.startsWith(sp.getName())) {
         sp.start += ((fig, sp.getFigPos(fig)))
       }
     }
-    
-    
+
+  }
+
+  def StrToIntK(s: String): Option[Int] = {
+    try {
+      Some(s.toInt)
+    } catch {
+      case e: Exception => None
+    }
   }
 }

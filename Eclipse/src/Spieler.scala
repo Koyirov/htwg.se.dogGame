@@ -9,7 +9,7 @@ class Spieler(id: Int, st: Int) {
   var start = collection.mutable.Map[String, Int]();
   var ziel = collection.mutable.Map[String, Int]();
 
-  var startPos = st;
+  val startPos = st;
 
   def getId(): Int = {
     return spielerId;
@@ -40,6 +40,10 @@ class Spieler(id: Int, st: Int) {
     return start;
   }
 
+  def getZiel(): collection.mutable.Map[String, Int] = {
+    return ziel;
+  }
+
   def setKarte(kar: Int) {
     karten += kar
   }
@@ -51,6 +55,23 @@ class Spieler(id: Int, st: Int) {
   def getKarten(): ArrayBuffer[Int] = {
     return karten;
   }
+  
+  def getkleinsteKarte(): Int = {
+    if(karten.contains(14))
+      return 1
+      
+    return karten.min
+  }
+
+  def getKartenAusgabe(): String = {
+    var hand = "Deine Handkarten: "
+
+    for (i <- karten) {
+      hand += i.toString() + ", "
+    }
+
+    return hand;
+  }
 
   def delKarte(kar: Int) {
     karten -= kar
@@ -61,20 +82,23 @@ class Spieler(id: Int, st: Int) {
     var check = false
     if (start.contains(fig))
       check = true
-      start -= (fig)
+    start -= (fig)
 
     return check
 
   }
-  
-  def getStartPos():Int = {
+
+  def getStartPos(): Int = {
     return startPos
   }
-  
-  def getFigPos(fig: String): Int ={
-    var pos = 1 
-    for(f <- start){
-      if(f._2 != pos){
+
+  def getFigPos(fig: String): Int = {
+    var pos = 1
+    if (start.isEmpty)
+      return pos
+    for (f <- start) {
+
+      if (f._2 != pos) {
         return pos
       }
       pos += 1
