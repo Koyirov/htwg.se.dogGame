@@ -67,7 +67,7 @@ object StepOne {
     }
 
     //TEST
-    /*
+    
     println("Schnell Start aktiviert")
 
     laufFeld += (("B1", 0))
@@ -79,7 +79,7 @@ object StepOne {
     players(1).start -= "R1"
     players(2).start -= "G1"
     players(3).start -= "S1"
-*/
+
     //test
     tui_v1(laufFeld, players)
 
