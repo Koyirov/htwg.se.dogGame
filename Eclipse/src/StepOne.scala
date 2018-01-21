@@ -3,6 +3,11 @@ object StepOne {
 
   import scala.collection.mutable.ArrayBuffer
 
+  var spPublicLf = collection.mutable.Map[String, Int]()
+  var revert7 = false
+  private var spLf = collection.mutable.Map[String, Int]()
+  private var spPl = ArrayBuffer[Spieler]();
+
   def main(args: Array[String]) {
 
     var kartenStapel = ArrayBuffer[Int]()
@@ -62,6 +67,7 @@ object StepOne {
     }
 
     //TEST
+    /*
     println("Schnell Start aktiviert")
 
     laufFeld += (("B1", 0))
@@ -73,7 +79,7 @@ object StepOne {
     players(1).start -= "R1"
     players(2).start -= "G1"
     players(3).start -= "S1"
-
+*/
     //test
     tui_v1(laufFeld, players)
 
@@ -81,7 +87,8 @@ object StepOne {
     //for (x <- players)
     //  println(x.getStart())
 
-    while (true) {
+    var win = 0
+    while (win == 0) {
 
       // kartenstapel auffuellen
       kartenStapel.clear()
@@ -165,7 +172,6 @@ object StepOne {
           tui_v1(laufFeld, players)
 
           // checken ob mind. eine karte moeglich
-          //TODO viele fehler hier
 
           //startkarte
           var checkSt = false
@@ -183,7 +189,6 @@ object StepOne {
           }
 
           // Blokierte Spielfelder
-          //TODO
           var besteFig = 0
           var checkBl = false
           for (fig <- laufFeld) {
@@ -205,14 +210,16 @@ object StepOne {
             }
           }
 
-          val klKart = players(sp).getkleinsteKarte()
-          println("besteFig: " + besteFig + "klKart: " + klKart)
-          if (besteFig >= klKart)
-            //blockiert
-            checkBl = true
+          if (!(players(sp).getAnzKart() == 0)) {
+            val klKart = players(sp).getkleinsteKarte()
+            println("besteFig: " + besteFig + "klKart: " + klKart)
+            if (besteFig >= klKart)
+              //blockiert
+              checkBl = true
 
-          if (!checkBl) {
-            println("Keine mögliche Figur vorhanden!(Blockiert)")
+            if (!checkBl) {
+              println("Keine mögliche Figur vorhanden!(Blockiert)")
+            }
           }
 
           // Nur Buben , ohne moeglichkeit
@@ -230,7 +237,7 @@ object StepOne {
 
           var andere = 0
           for (fig <- laufFeld) {
-            if (fig._1.startsWith(players(sp).getName()))
+            if (!fig._1.startsWith(players(sp).getName()))
               andere += 1
           }
 
@@ -238,58 +245,97 @@ object StepOne {
             println("Keine mögliche Figur vorhanden!(alle Buben)")
           }
 
-          // evtl? andere faelle (im ziel blockiert, ...)
+          // im ziel blockiert
+          var bl = false
 
-          /*var spPos = collection.mutable.Map[String, Int]()
+          if (!players(sp).ziel.isEmpty) {
+            // Figur nicht im Lauffeld -> Figur ist im Zielfeld
 
-          for (i <- 1 to 4) {
-            if (laufFeld.contains(players(sp).getName() + i.toString())) {
-              spPos += ((players(sp).getName() + i.toString(), laufFeld.get(players(sp).getName() + i.toString()).get))
+            if (!(players(sp).getAnzKart() == 0)) {
+              val klKart = players(sp).getkleinsteKarte()
+
+              for (fig <- players(sp).ziel) {
+                var pos = fig._2
+                var schritt = 4 - pos
+
+                // ------------
+                var l = players(sp).ziel.map(_.swap)
+
+                if (klKart <= schritt) {
+                  var belegt = false
+                  for (i <- pos + 1 to 4) {
+                    if (l.contains(i)) {
+                      belegt = true
+                    }
+                  }
+                  if (!belegt) {
+                    bl = true
+                  }
+                }
+              }
             }
           }
 
-          var frei = true
+          if (bl)
+            println("Keine mögliche Figur vorhanden!(alle blockiert)")
 
-          if (!spPos.isEmpty) {
-            for (f <- spPos) {
-              for (k <- players(sp).getKarten()) {
+          // evtl andere faelle ?
 
-              }
-            }
-          }*/
+          // Keine moegliche Zuege erkannt:
 
-          // karten anzeigen
-          println("Du bist dran: " + players(sp).getName())
-          println("Ass = 1, Bube = 11, Dame = 12, Koenig = 13, Joker = 14, 0 = keine moegliche")
-          println(players(sp).getKartenAusgabe())
+          if (!checkSt && !checkBl && (km || andere == 0) && bl) {
+            players(sp).delAllKarte()
+            println("Keine Karte zum Spielen: alle Karten abgeworfen")
+          }
 
-          if (!(players(sp).getAnzKart() == 0)) {
-            //auswaehlen + loeschen
-            println("Waehle eine Karte zum Spielen aus.")
-            var spKart = scala.io.StdIn.readLine()
-            var sK = StrToInt(spKart)
+          var legit = false
+          while (!legit) {
 
-            while (sK == None) {
+            // karten anzeigen
+            println("Du bist dran: " + players(sp).getName())
+            println("Ass = 1, Bube = 11, Dame = 12, Koenig = 13, Joker = 14, 0 = keine moegliche")
+            println(players(sp).getKartenAusgabe())
+
+            if (!(players(sp).getAnzKart() == 0)) {
+              //auswaehlen + loeschen
               println("Waehle eine Karte zum Spielen aus.")
-              spKart = scala.io.StdIn.readLine()
-              sK = StrToInt(spKart)
-            }
+              var spKart = scala.io.StdIn.readLine()
+              var sK = StrToInt(spKart)
 
-            if (sK.get == 0) {
-              println("Keine Karte zum Spielen.")
-              // Karten loeschen und naechster spieler
-              for (k <- players(sp).getKarten()) {
-                players(sp).delKarte(k)
+              while (sK == None) {
+                println("Waehle eine Karte zum Spielen aus.")
+                spKart = scala.io.StdIn.readLine()
+                sK = StrToInt(spKart)
               }
 
-            } else {
+              if (sK.get == 0) {
+                println("Keine Karte zum Spielen.")
+                // Karten loeschen und naechster spieler
+                players(sp).delAllKarte()
 
-              players(sp).delKarte(sK.get)
+              } else {
 
-              // kartenlogik ausfuehren
-              Kartenlogik().ausfuehren(laufFeld, sK.get, players(sp), players)
+                // kartenlogik ausfuehren
+                if (Kartenlogik().ausfuehren(laufFeld, sK.get, players(sp), players)) {
 
+                  players(sp).delKarte(sK.get)
+                  legit = true
+
+                } else if (revert7) {
+                  var tup = ladeDaten()
+                  laufFeld = tup._1
+                  players = tup._2
+                  revert7 = false
+                  legit = false
+                  println("Jetzt eine neue Karte angeben.(7)")
+                } else {
+                  legit = false
+                  println("Jetzt eine neue Karte angeben.")
+                }
+
+              }
             }
+            legit = true
 
           }
           // zug ende
@@ -306,14 +352,21 @@ object StepOne {
           // alle spieler haben keine karten mehr - runden ende!
           rundenEnde = true
 
-          if (karGrenz >= 2)
+          if (karGrenz > 2)
             karGrenz -= 1
           else
             karGrenz = 6
         }
 
       } // while rundenende
-    } // while true ende
+
+      if (players(1).alleImZiel() && players(3).alleImZiel())
+        win = 1
+      if (players(0).alleImZiel() && players(2).alleImZiel())
+        win = 2
+
+    } // while win ende
+    println(win + " hat mit seinem Teampartner gewonnen :)")
   }
   def tui_v1(lF: collection.mutable.Map[String, Int], p: ArrayBuffer[Spieler]) {
 
@@ -414,6 +467,22 @@ object StepOne {
 
     return true
   }
+
+  def speicherDaten(laufFeld: collection.mutable.Map[String, Int], players: ArrayBuffer[Spieler]) = {
+    spLf = laufFeld.clone()
+    spPl = players.clone()
+  }
+
+  def speicherFigDaten(laufFeld: collection.mutable.Map[String, Int]) = {
+    spPublicLf = laufFeld.clone()
+    //println("etwas2 : "+ spPublicLf)
+  }
+
+  def ladeDaten(): (collection.mutable.Map[String, Int], ArrayBuffer[Spieler]) = {
+
+    return (spLf, spPl)
+  }
 }
+
 
 

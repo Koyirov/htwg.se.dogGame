@@ -76,6 +76,10 @@ class Spieler(id: Int, st: Int) {
   def delKarte(kar: Int) {
     karten -= kar
   }
+  
+  def delAllKarte() {
+    karten.clear()
+  }
 
   def delFigur(fig: String): Boolean = {
 
@@ -104,5 +108,13 @@ class Spieler(id: Int, st: Int) {
       pos += 1
     }
     return pos
+  }
+  
+  def alleImZiel(): Boolean = {
+    
+    if(ziel.size == 4)
+      return true
+    
+    return false
   }
 }

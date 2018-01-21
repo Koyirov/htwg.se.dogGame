@@ -65,13 +65,13 @@ case class Kartenlogik() {
     return opt
   }
 
-  def laufen(lF: collection.mutable.Map[String, Int], figur: String, opt: Int, spieler: Spieler, alleSp: ArrayBuffer[Spieler]) {
+  def laufen(lF: collection.mutable.Map[String, Int], figur: String, opt: Int, spieler: Spieler, alleSp: ArrayBuffer[Spieler]): Boolean = {
 
     opt match {
       case 0 => {
         if (!spieler.delFigur(figur)) {
-          println("etwas lief falsch.")
-          //TODO fehlerbehandlung
+          println("Etwas lief falsch - keine Figur geloescht")
+          return false
         }
         if (posBelegt(lF, spieler.getStartPos())) {
           //nachhause schicken
@@ -80,24 +80,34 @@ case class Kartenlogik() {
 
         //aus dem start gehen
         lF += ((figur, spieler.getStartPos()))
+        return true
 
       }
       case 7 => {
         // 7
+
+        //println("**alle felder ausgeben**")
+        StepOne.tui_v1(lF, alleSp)
+
         if (lF.contains(figur)) {
           var pos = lF.get(figur)
-          var erg = (pos.get + opt) % 64 
-          
-          
-          // TODO was wenn blockiert
-          
-         
-          
-          
+          var erg = (pos.get + 1) % 64
+
+          if (!StepOne.lFIstFrei(lF, alleSp, erg)) {
+            println("Blockiert durch StartFigur")
+            return false
+          }
+
           lF.remove(figur)
-          
-          if (pos.get == spieler.startPos){
-            // Ins Ziel laufen
+
+          var vorPos = 1000
+          //println("etwas3 : " + StepOne.spPublicLf)
+          if (StepOne.spPublicLf.clone().get(figur) != None) {
+            vorPos = StepOne.spPublicLf.clone().get(figur).get % 16
+            //println("Zugriff erfolgt!")
+          }
+          if (pos.get == spieler.startPos && (9 <= vorPos && vorPos <= 15)) {
+            // Ins Ziel laufen wenn davor vor dem ziel war( 9 bis 15)!
             val zielPos = erg - spieler.startPos
             spieler.ziel += ((figur, zielPos))
           } else {
@@ -107,59 +117,75 @@ case class Kartenlogik() {
               schickStart(lF, alleSp, erg)
             lF += ((figur, erg))
           }
-        } else {
+        } else if (spieler.ziel.contains(figur)) {
           // Figur nicht im Lauffeld -> Figur ist im Zielfeld
-          if (spieler.ziel.contains(figur)) {
-            var pos = spieler.ziel.get(figur)
-            var schritt = 4 - pos.get
-            var l = spieler.ziel.map(_.swap)
 
-            if (opt <= schritt) {
-              var belegt = false
-              for (i <- pos.get + 1 to 4) {
-                if (l.contains(i)) {
-                  belegt = true
-                }
+          var pos = spieler.ziel.get(figur)
+          var schritt = 4 - pos.get
+          var l = spieler.ziel.map(_.swap)
 
-                if (!belegt) {
-                  spieler.ziel.remove(figur)
-                  spieler.ziel += ((figur, pos.get + schritt))
-                } else {
-                  println("Figur kann sich nicht mehr laufen!")
-                }
-              }
+          if (1 <= schritt) {
+            var belegt = false
+            if (l.contains(pos.get + 1)) {
+              belegt = true
+
             }
+            if (!belegt) {
+              spieler.ziel.remove(figur)
+              spieler.ziel += ((figur, pos.get + 1))
+            } else {
+              println("Figur kann sich nicht mehr laufen!")
+              return false
+            }
+
           }
+        } else {
+          // Figur nicht im Lauffeld , Figur ist nicht im Zielfeld -> Figur im Startfeld
+          return false
         }
+        return true
       }
       case 14 => {
         // 4 zurueck
         if (lF.contains(figur)) {
           var pos = lF.get(figur)
           lF.remove(figur)
-          var erg = (pos.get - 4) 
-       
-          if (erg < 0){
-            erg = 64+erg
+          var erg = (pos.get - 4)
+
+          if (erg < 0) {
+            erg = 64 + erg
           }
-          
+
           erg = erg % 64
-          println("TEST." + erg)
 
           if (posBelegt(lF, erg))
             //figur schlagen
             schickStart(lF, alleSp, erg)
           lF += ((figur, erg))
+          return true
+        } else {
+          //Figur nicht im Lauffeld
+          println("Figur nicht im Lauffeld: bitte nochmal eingeben");
+          return false
         }
       }
       case 15 => {
-        println("Figur von andere Spieler waehlen! (z.B. R1");
+        var checkAndere = false
+        for (figs <- lF.seq) {
+          if (!figs._1.startsWith(spieler.getName()))
+            checkAndere = true
+        }
+
+        if (!checkAndere)
+          return false
+
+        println("Figur von andere Spieler waehlen! (z.B. R1)");
         var fig2 = spFigur_waehlen()
 
         // Check falls tauschbar
         while (!lF.contains(fig2) && !fig2.startsWith(spieler.getName())) {
           println("Diese Figur kann man nicht tauschen.")
-          println("Figur von anderem Spieler waehlen! (z.B. R1");
+          println("Figur von anderem Spieler waehlen! (z.B. R1)");
           fig2 = spFigur_waehlen()
         }
 
@@ -171,22 +197,27 @@ case class Kartenlogik() {
 
         lF += ((figur, pos2))
         lF += ((fig2, pos))
+        return true
 
       }
       case _ => {
-        // TODO was wenn blockiert
         // im normalfall : 1-13
+
         if (lF.contains(figur)) {
           var pos = lF.get(figur)
-          var erg = (pos.get + opt) % 64 
-          
+          var erg = (pos.get + opt) % 64
+
           //was wenn blockiert
-          
-          
-          
-         
+          for (i <- pos.get + 1 to pos.get + opt) {
+            var s = i % 64
+            if (!StepOne.lFIstFrei(lF, alleSp, s)) {
+              println("Diese Figur ist blockiert.")
+              return false
+            }
+          }
+
           lF.remove(figur)
-          
+
           if ((pos.get < spieler.startPos || (spieler.getId() == 1 && pos.get > 4)) && 1 <= (erg - spieler.startPos) % 64 && (erg - spieler.startPos) % 64 <= 4) {
             // Ins Ziel laufen
             val zielPos = erg - spieler.startPos
@@ -198,35 +229,40 @@ case class Kartenlogik() {
               schickStart(lF, alleSp, erg)
             lF += ((figur, erg))
           }
-        } else {
+        } else if (spieler.ziel.contains(figur)) {
           // Figur nicht im Lauffeld -> Figur ist im Zielfeld
-          if (spieler.ziel.contains(figur)) {
-            var pos = spieler.ziel.get(figur)
-            var schritt = 4 - pos.get
-            var l = spieler.ziel.map(_.swap)
 
-            if (opt <= schritt) {
-              var belegt = false
-              for (i <- pos.get + 1 to 4) {
-                if (l.contains(i)) {
-                  belegt = true
-                }
+          var pos = spieler.ziel.get(figur)
+          var schritt = 4 - pos.get
+          var l = spieler.ziel.map(_.swap)
 
-                if (!belegt) {
-                  spieler.ziel.remove(figur)
-                  spieler.ziel += ((figur, pos.get + schritt))
-                } else {
-                  println("Figur kann sich nicht mehr laufen!")
-                }
+          if (opt <= schritt) {
+            var belegt = false
+            for (i <- pos.get + 1 to 4) {
+              if (l.contains(i)) {
+                belegt = true
               }
             }
+            if (!belegt) {
+              spieler.ziel.remove(figur)
+              spieler.ziel += ((figur, pos.get + schritt))
+            } else {
+              println("Figur kann sich nicht mehr laufen!")
+              return false
+            }
+
           }
+        } else {
+          // Figur nicht im Lauffeld , Figur ist nicht im Zielfeld -> Figur im Startfeld
+          println("Diese Figur ist im Startfeld.")
+          return false
         }
+        return true
       }
     }
   }
 
-  def ausfuehren(lF: collection.mutable.Map[String, Int], karte: Int, spieler: Spieler, alleSp: ArrayBuffer[Spieler]) {
+  def ausfuehren(lF: collection.mutable.Map[String, Int], karte: Int, spieler: Spieler, alleSp: ArrayBuffer[Spieler]): Boolean = {
 
     //Fall:joker
     var karteE = karte
@@ -260,6 +296,7 @@ case class Kartenlogik() {
       case 0 => { // keine moegliche karte
 
         println("Es gibt keine ausspielbare Karte.")
+        return true
       }
       case 1 => { // ASS
         var fig = spieler.getName() + figur_waehlen()
@@ -269,19 +306,19 @@ case class Kartenlogik() {
         println("11 -> 11 Schritte im Lauffeld weiter laufen.")
         var opt = opt_waehlen()
 
-        laufen(lF, fig, opt, spieler, alleSp)
+        return laufen(lF, fig, opt, spieler, alleSp)
       }
       case 2 => {
         var fig = spieler.getName() + figur_waehlen()
         // optionen bestimmen
         var opt = 2
-        laufen(lF, fig, opt, spieler, alleSp)
+        return laufen(lF, fig, opt, spieler, alleSp)
       }
       case 3 => {
         var fig = spieler.getName() + figur_waehlen()
         // optionen bestimmen
         var opt = 3
-        laufen(lF, fig, opt, spieler, alleSp)
+        return laufen(lF, fig, opt, spieler, alleSp)
       }
       case 4 => {
         var fig = spieler.getName() + figur_waehlen()
@@ -290,53 +327,60 @@ case class Kartenlogik() {
         println("4 -> 4 Schritte im Lauffeld weiter laufen.")
         var opt = opt_waehlen()
 
-        laufen(lF, fig, opt, spieler, alleSp)
+        return laufen(lF, fig, opt, spieler, alleSp)
       }
       case 5 => {
         var fig = spieler.getName() + figur_waehlen()
         // optionen bestimmen
         var opt = 5
 
-        laufen(lF, fig, opt, spieler, alleSp)
+        return laufen(lF, fig, opt, spieler, alleSp)
       }
       case 6 => {
         var fig = spieler.getName() + figur_waehlen()
         // optionen bestimmen
         var opt = 6
 
-        laufen(lF, fig, opt, spieler, alleSp)
+        return laufen(lF, fig, opt, spieler, alleSp)
       }
       case 7 => {
+        StepOne.speicherDaten(lF, alleSp)
+        StepOne.speicherFigDaten(lF)
+        //println("etwas : " + lF)
+
         for (i <- 1 to 7) {
           var fig = spieler.getName() + figur_waehlen()
           // optionen bestimmen
-          // TODO zuege verfallen falls fehler
-          
+
           var opt = 7
 
-          laufen(lF, fig, opt, spieler, alleSp)
+          if (!laufen(lF, fig, opt, spieler, alleSp)) {
+            StepOne.revert7 = true
+            return false
+          }
         }
+        return true
       }
       case 8 => {
         var fig = spieler.getName() + figur_waehlen()
         // optionen bestimmen
         var opt = 8
 
-        laufen(lF, fig, opt, spieler, alleSp)
+        return laufen(lF, fig, opt, spieler, alleSp)
       }
       case 9 => {
         var fig = spieler.getName() + figur_waehlen()
         // optionen bestimmen
         var opt = 9
 
-        laufen(lF, fig, opt, spieler, alleSp)
+        return laufen(lF, fig, opt, spieler, alleSp)
       }
       case 10 => {
         var fig = spieler.getName() + figur_waehlen()
         // optionen bestimmen
         var opt = 10
 
-        laufen(lF, fig, opt, spieler, alleSp)
+        return laufen(lF, fig, opt, spieler, alleSp)
       }
       case 11 => { // Bube
         var fig = spieler.getName() + figur_waehlen()
@@ -344,13 +388,13 @@ case class Kartenlogik() {
 
         var opt = 15
 
-        laufen(lF, fig, opt, spieler, alleSp)
+        return laufen(lF, fig, opt, spieler, alleSp)
       }
       case 12 => { // Dame
         var fig = spieler.getName() + figur_waehlen()
         var opt = 12
 
-        laufen(lF, fig, opt, spieler, alleSp)
+        return laufen(lF, fig, opt, spieler, alleSp)
 
       }
       case 13 => { // Koenig
@@ -360,12 +404,12 @@ case class Kartenlogik() {
         println("13 -> 13 Schritte im Lauffeld weiter laufen.")
         var opt = opt_waehlen()
 
-        laufen(lF, fig, opt, spieler, alleSp)
+        return laufen(lF, fig, opt, spieler, alleSp)
 
       }
       case _ => { // etwas lief schief
         println("Etwas lief falsch: Error match-ausfuehren")
-        System.exit(1)
+        return false
       }
     }
   }
