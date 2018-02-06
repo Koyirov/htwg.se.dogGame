@@ -20,19 +20,18 @@ object StepOne {
     // init spieler
     println("Wieviele Spieler spielen?")
 
-    var anzSpieler = scala.io.StdIn.readLine()
-    var s = StrToInt(anzSpieler)
+    var anzSpieler = "0"
+    var cor = false
 
-    while (s == None) {
+    while (!cor) {
       println("Bitte eine Zahl eingeben. (4)")
       anzSpieler = scala.io.StdIn.readLine()
-      s = StrToInt(anzSpieler)
+      var s = StrToInt(anzSpieler)
 
-    }
-
-    if (s.get != 4) {
-      println("Not implemented yet!");
-      return ;
+      if (s != None)
+        if (s.get == 4) {
+          cor = true
+        }
     }
 
     // default- 1 to 4
@@ -67,7 +66,7 @@ object StepOne {
     }
 
     //TEST
-    
+
     println("Schnell Start aktiviert")
 
     laufFeld += (("B1", 0))
